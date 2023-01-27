@@ -1,0 +1,34 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel GenerateNoise
+
+#include "Packages/jp.keijiro.noiseshader/Shader/SimplexNoise2D.hlsl"
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+int noiseSides, noiseHeight;
+
+int minHeight;
+int maxHeight;
+float surfaceLevel;
+
+RWTexture2D<float> NoiseMap;
+RWTexture3D<float> Result;
+
+[numthreads(8,8,16)]
+void GenerateNoise(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x < noiseSides && id.y < noiseSides && id.z < noiseHeight)
+	{
+		float range = maxHeight - minHeight;
+		float pointHeight = minHeight + range * NoiseMap[int2(id.x, id.y)];
+		float gradientHeight = pointHeight / surfaceLevel;
+		if (id.z <= gradientHeight)
+		{
+			Result[id] = id.z / gradientHeight;
+		}
+		else
+		{
+			Result[id] = 1.0;
+		}
+	}
+}

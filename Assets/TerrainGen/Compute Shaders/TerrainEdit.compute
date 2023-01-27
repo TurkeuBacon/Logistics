@@ -1,0 +1,42 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture3D<float> DensityMap;
+
+int size;
+int height;
+int3 center;
+float radius;
+int3 radiusOffset;
+float rate;
+
+RWStructuredBuffer<float> change;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	int3 sampleCoord = id + center - radiusOffset;
+	int3 offsetFromCenter = sampleCoord - center;
+	if (sampleCoord.x < 0 || sampleCoord.y < 0 || sampleCoord.z < 1 || sampleCoord.x >= size || sampleCoord.y >= size || sampleCoord.z >= height - 1) { return; }
+	if (-radius <= offsetFromCenter.x && offsetFromCenter.x <= radius && -radius <= offsetFromCenter.y && offsetFromCenter.y <= radius && -radius <= offsetFromCenter.z && offsetFromCenter.z <= radius)
+	{
+		float pointSample = DensityMap[sampleCoord];
+		if (rate > 0)
+			pointSample = 0;
+		else
+			pointSample = 1;
+		/*pointSample -= rate;
+		if (pointSample > 1)
+		{
+			pointSample = 1;
+		}
+		else if (pointSample < 0)
+		{
+			pointSample = 0;
+		}*/
+		if(DensityMap[sampleCoord] != pointSample) { change[0]++; }
+		DensityMap[sampleCoord] = pointSample;
+	}
+}

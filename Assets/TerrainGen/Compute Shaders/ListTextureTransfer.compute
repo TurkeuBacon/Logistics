@@ -1,0 +1,30 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel cpuToGpu
+#pragma kernel gpuToCpu
+
+int width;
+int depth;
+int height;
+
+RWStructuredBuffer<float> list;
+
+RWTexture3D<float> rendTexture;
+
+[numthreads(8,8,16)]
+void cpuToGpu (uint3 id : SV_DispatchThreadID)
+{
+    if(id.x < width && id.y < depth && id.z < height)
+    {
+        rendTexture[id] = list.Load(id.z * depth + id.y * width + id.x);
+        //rendTexture[id] = id.z / (float)height;
+    }
+}
+
+[numthreads(8,8,16)]
+void gpuToCpu (uint3 id : SV_DispatchThreadID)
+{
+    if(id.x < width && id.y < depth && id.z < height)
+    {
+        list[id.z * depth + id.y * width + id.x] = rendTexture[id];
+    }
+}

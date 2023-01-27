@@ -1,0 +1,54 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel GenerateNoise
+
+#include "Packages/jp.keijiro.noiseshader/Shader/SimplexNoise3D.hlsl"
+#include "Packages/jp.keijiro.noiseshader/Shader/SimplexNoise2D.hlsl"
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+int octaves;
+float persistance;
+float lacunarity;
+float noiseScale;
+float3 offsets[6];
+float maxPossibleValue;
+
+float surfaceLevel;
+
+int noiseSides;
+int noiseHeight;
+RWTexture3D<float> Result;
+
+[numthreads(8, 8, 16)]
+void GenerateNoise(uint3 id : SV_DispatchThreadID)
+{
+	if ((int)id.x < noiseSides && (int)id.y < noiseSides && (int)id.z < noiseHeight)
+	{
+		float amplitude = 1;
+		float frequency = 1;
+		float value = 0;
+		for (int i = 0; i < octaves; i++)
+		{
+			float sampleX = (id.x + offsets[i].x) * noiseScale * frequency;
+			float sampleY = (id.y + offsets[i].y) * noiseScale * frequency;
+			float sampleZ = (id.z + offsets[i].z) * noiseScale * frequency;
+			float noiseValue = SimplexNoise(float3(sampleX, sampleY, sampleZ));
+			value += noiseValue * amplitude;
+
+			amplitude *= persistance;
+			frequency *= lacunarity;
+		}
+		float normalizedValue = (value + 1) / (2 * maxPossibleValue / 1.75);
+		float continentalness = (SimplexNoise((id.xy + float2(offsets[0].x, offsets[0].y)) * 0.0001) / 2 + 0.5) * 0.07;
+		normalizedValue += continentalness * (id.z * surfaceLevel * 2 - (noiseHeight - 1) * surfaceLevel);
+		if(normalizedValue < 0)
+		{
+			normalizedValue = 0;
+		}
+		else if(normalizedValue > 1)
+		{
+			normalizedValue = 1;
+		}
+		Result[id] = normalizedValue;
+	}
+}

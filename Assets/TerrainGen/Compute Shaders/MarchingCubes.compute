@@ -1,0 +1,183 @@
+﻿/*
+MIT License
+
+Copyright (c) 2021 Sebastian Lague
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel GenerateMarchingCube
+#include "/Tables.compute"
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+
+struct Vertex
+{
+	float3 position;
+	float3 normal;
+};
+
+struct Triangle
+{
+    int3 index;
+	Vertex vert1;
+	Vertex vert2;
+	Vertex vert3;
+};
+
+AppendStructuredBuffer<Triangle> triangles;
+RWTexture3D<float> noiseMapTexture;
+//Texture3D<float3> gridToWorld;
+
+
+float surfaceLevel;
+float scale;
+
+int noiseMapSize;
+int noiseMapHeight;
+
+int incrementAmmount;
+
+float3 getWorldCoord(int3 coord)
+{
+    //return gridToWorld[coord];
+    return float3(coord.x, coord.z, coord.y) * scale;
+}
+
+float getNoiseValue(int3 coord)
+{
+	return noiseMapTexture[coord + int3(1, 1, 0)];
+}
+
+float3 calculateNormal(int3 noiseCoord)
+{
+    //Unit vectors i, j, k
+	int3 vi = int3(1, 0, 0);
+	int3 vj = int3(0, 1, 0);
+	int3 vk = int3(0, 0, 1);
+
+    //noiseCoord = int3(noiseCoord.x, noiseCoord.z, noiseCoord.y);
+
+    //Estimate partial derivatives of noiseMap along x, y, and z
+	float dx = getNoiseValue(noiseCoord - vi) - getNoiseValue(noiseCoord + vi);
+	float dy = getNoiseValue(noiseCoord - vj) - getNoiseValue(noiseCoord + vj);
+	float dz = getNoiseValue(noiseCoord - vk) - getNoiseValue(noiseCoord + vk);
+
+    //Return the gradient of the noise map at noiseCoord
+	return normalize(float3(-dx, -dz, -dy));
+}
+
+//Return vertex position along the edge between coordA and coordB
+
+Vertex CalculateVertex(int3 coordA, int3 coordB)
+{
+    Vertex vert;
+
+    float3 normalA = calculateNormal(coordA);
+    float3 normalB = calculateNormal(coordB);
+    //Find normal along edge (needs adjustment to work with surfaceLevel != 0.5)
+
+    //Find vertex position along edge (needs adjustment to work with surfaceLevel != 0.5)
+
+    float valueA = getNoiseValue(coordA);
+    float valueB = getNoiseValue(coordB);
+    if (valueB < valueA)
+    {
+        int3 coordTemp = coordA;
+        coordA = coordB;
+        coordB = coordTemp;
+
+        float valueTemp = valueA;
+        valueA = valueB;
+        valueB = valueTemp;
+    }
+
+    float3 positionA = getWorldCoord(coordA);
+    float3 positionB = getWorldCoord(coordB);
+
+    float percent = (surfaceLevel - valueA) / (valueB - valueA);
+
+    vert.position = (1 - percent) * positionA + percent * positionB;
+    vert.normal = normalize(normalA + percent * (normalB - normalA));
+
+    //vert.position = float3(vert.position.x, vert.position.y, vert.position.z);
+
+    return vert;
+}
+
+[numthreads(8,8,16)]
+void GenerateMarchingCube(uint3 id : SV_DispatchThreadID)
+{
+	int x = id.x;
+	int y = id.y;
+	int z = id.z;
+    if((uint) (x % incrementAmmount) != 0 || (uint) (y % incrementAmmount) != 0 || (uint) (z % incrementAmmount) != 0) { return; }
+
+    //Get the vertices of the cube with bottom left back corner (x, y, z)
+    //check here if it doesnt work (compare to sebastian lague)
+    int3 cubeCoordsLinear[8] = {
+        int3(x, y, z), int3(x + incrementAmmount, y, z),
+        int3(x + incrementAmmount, y + incrementAmmount, z), int3(x, y + incrementAmmount, z),
+
+        int3(x, y, z + incrementAmmount), int3(x + incrementAmmount, y, z + incrementAmmount),
+        int3(x + incrementAmmount, y + incrementAmmount , z + incrementAmmount), int3(x, y + incrementAmmount, z + incrementAmmount)
+    };
+
+    //Calcualte Triangulation Index (If noise value at vertex i < surfaceLevel 8 bit binary index = 1)
+    int triangulationIndex = 0;
+    for (int i = 0; i < 8; i++)
+    {
+        if (getNoiseValue(cubeCoordsLinear[i]) < surfaceLevel)
+        {
+            triangulationIndex |= 1 << i;
+        }
+    }
+    int triangulation[16] = triTable[triangulationIndex];
+    for (i = 0; i < 13; i += 3)
+    {
+        if (triangulation[i] == -1) { break; }
+        Triangle currentTri;
+
+        int edge1 = triangulation[i];
+        int edge2 = triangulation[i + 1];
+        int edge3 = triangulation[i + 2];
+
+        int vert1A = edgeToCoordA[edge1];
+        int vert1B = edgeToCoordB[edge1];
+
+        int vert2A = edgeToCoordA[edge2];
+        int vert2B = edgeToCoordB[edge2];
+
+        int vert3A = edgeToCoordA[edge3];
+        int vert3B = edgeToCoordB[edge3];
+
+        Vertex vert1 = CalculateVertex(cubeCoordsLinear[vert1A], cubeCoordsLinear[vert1B]);
+        Vertex vert2 = CalculateVertex(cubeCoordsLinear[vert2A], cubeCoordsLinear[vert2B]);
+        Vertex vert3 = CalculateVertex(cubeCoordsLinear[vert3A], cubeCoordsLinear[vert3B]);
+
+        currentTri.index = int3(x, y, z);
+        currentTri.vert1 = vert1;
+        currentTri.vert2 = vert2;
+        currentTri.vert3 = vert3;
+        triangles.Append(currentTri);
+    }
+}
