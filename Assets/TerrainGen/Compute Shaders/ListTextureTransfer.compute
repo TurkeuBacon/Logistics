@@ -15,8 +15,7 @@ void cpuToGpu (uint3 id : SV_DispatchThreadID)
 {
     if(id.x < width && id.y < depth && id.z < height)
     {
-        rendTexture[id] = list.Load(id.z * depth + id.y * width + id.x);
-        //rendTexture[id] = id.z / (float)height;
+        rendTexture[id] = list.Load(id.z * depth * width + id.y * width + id.x);
     }
 }
 
@@ -25,6 +24,6 @@ void gpuToCpu (uint3 id : SV_DispatchThreadID)
 {
     if(id.x < width && id.y < depth && id.z < height)
     {
-        list[id.z * depth + id.y * width + id.x] = rendTexture[id];
+        list[id.z * depth * width + id.y * width + id.x] = rendTexture[id];
     }
 }

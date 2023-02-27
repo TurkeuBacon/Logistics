@@ -18,7 +18,7 @@ public class ChunkDataViewer : MonoBehaviour
     {
         if(slice != lastSlice)
         {
-            if(slice >= Chunk.terrainGenerator.chunkResolution)
+            if(slice >= Chunk.terrainGenerator.chunkResolution + 2 || slice < 0)
             {
                 slice = lastSlice;
             }

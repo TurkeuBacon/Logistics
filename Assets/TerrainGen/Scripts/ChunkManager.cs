@@ -182,8 +182,6 @@ public class Chunk
 
         terrainGenerator.GenerateDensityMap(ref densityMapGPU, key);
         if(debugLevel > 0) go.GetComponent<ChunkDataViewer>().chunk = this;
-        // setEditable(false);
-        // setEditable(true);
         Mesh mesh = terrainGenerator.generateMeshGPU(densityMapGPU);
         go.GetComponent<MeshFilter>().sharedMesh = mesh;
         go.transform.position = new Vector3(position.x, 0f, position.y) * chunkSize;

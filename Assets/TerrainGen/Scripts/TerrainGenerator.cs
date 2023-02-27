@@ -5,7 +5,6 @@ using Unity.Collections;
 
 public class TerrainGenerator : MonoBehaviour
 {
-    static bool help = false;
     public ComputeShader noiseCompute3D, marchingCubesShader, listTextureTransfer, slicer;
 
     public int chunkResolution = 33;
@@ -102,25 +101,6 @@ public class TerrainGenerator : MonoBehaviour
 
         listBuffer.GetData(list);
 
-        if(!help && false)
-        {
-            for(int slice = 0; slice < chunkResolution + 2; slice++)
-            {
-                string listS = "";
-                for(int z = 0; z < chunkResHeight; z++)
-                {
-                    listS += list[z * chunkResHeight + slice * (chunkResolution + 2) + 0] > marchingCubesSurfaceLevel ? "O" : "X";
-                    for(int x = 1; x < chunkResolution + 2; x++)
-                    {
-                        listS += ", " + (list[z * chunkResHeight + slice * (chunkResolution + 2) + x] > marchingCubesSurfaceLevel ? "O" : "X");
-                    }
-                    listS += "\n";
-                }
-                Debug.Log(listS);
-            }
-            help = true;
-        }
-
         listBuffer.Release();
         return list;
     }
@@ -136,39 +116,8 @@ public class TerrainGenerator : MonoBehaviour
         listTextureTransfer.SetInt("height", chunkResHeight);
         
         listTextureTransfer.SetTexture(kernel, "rendTexture", texture);
-        ComputeBuffer listBuffer = new ComputeBuffer(list.Length, sizeof(float), ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
-
-        NativeArray<float> listBufferInput = listBuffer.BeginWrite<float>(0, list.Length);
-        listBufferInput.CopyFrom(list);
-        for(int z = 0; z < chunkResHeight; z++)
-        {
-            for(int y = 0; y < chunkResolution + 2; y++)
-            {
-                for(int x = 1; x < chunkResolution + 2; x++)
-                {
-                    list[z * (chunkResolution + 2) + y * (chunkResolution + 2) + x] = z / (float)chunkResHeight;
-                }
-            }
-        }
-        if(!help)
-        {
-            for(int slice = 0; slice < chunkResolution + 2; slice++)
-            {
-                string listS = "";
-                for(int z = 0; z < chunkResHeight; z++)
-                {
-                    listS += listBufferInput[z * chunkResHeight + slice * (chunkResolution + 2) + 0] > marchingCubesSurfaceLevel ? "O" : "X";
-                    for(int x = 1; x < chunkResolution + 2; x++)
-                    {
-                        listS += ", " + (listBufferInput[z * chunkResHeight + slice * (chunkResolution + 2) + x] > marchingCubesSurfaceLevel ? "O" : "X");
-                    }
-                    listS += "\n";
-                }
-                Debug.Log(listS);
-            }
-            help = true;
-        }
-        listBuffer.EndWrite<float>(list.Length);
+        ComputeBuffer listBuffer = new ComputeBuffer(list.Length, sizeof(float));
+        listBuffer.SetData(list);
 
         listTextureTransfer.SetBuffer(kernel, "list", listBuffer);
 
