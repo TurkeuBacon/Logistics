@@ -6,7 +6,7 @@ using Unity.Collections;
 public class TerrainGenerator : MonoBehaviour
 {
     static bool help = false;
-    public ComputeShader noiseCompute3D, marchingCubesShader, listTextureTransfer;
+    public ComputeShader noiseCompute3D, marchingCubesShader, listTextureTransfer, slicer;
 
     public int chunkResolution = 33;
     public int chunkResHeight = 257;
@@ -174,5 +174,45 @@ public class TerrainGenerator : MonoBehaviour
 
         listTextureTransfer.Dispatch(kernel, groupsSides, groupsSides, groupsHeight);
         listBuffer.Release();
+    }
+
+    public RenderTexture getSlice(RenderTexture densityMap, int slice)
+    {
+        RenderTexture sliceTexture = new RenderTexture(densityMap.width, densityMap.volumeDepth, 1);
+        sliceTexture.format = RenderTextureFormat.ARGBFloat;
+        sliceTexture.enableRandomWrite = true;
+
+        int kernel = slicer.FindKernel("getSlice");
+        int width = sliceTexture.width;
+        int height = sliceTexture.height;
+
+        slicer.SetInt("width", width);
+        slicer.SetInt("height", height);
+        slicer.SetInt("slice", slice);
+        slicer.SetTexture(kernel, "densityMap", densityMap);
+        slicer.SetTexture(kernel, "sliceTexture", sliceTexture);
+
+        slicer.Dispatch(kernel, Mathf.CeilToInt(width/32f), Mathf.CeilToInt(height/32f), 1);
+
+        return sliceTexture;
+    }
+
+    public Texture2D getSlice(float[] densityMap, int slice)
+    {
+        int width = chunkResolution+2;
+        int height = chunkResHeight;
+        Texture2D sliceTexture = new Texture2D(width, height);
+        Color[] colors = new Color[width*height];
+        for(int y = 0; y < height; y++)
+        {
+            for(int x = 0; x < width; x++)
+            {
+                float value = densityMap[(y*width + slice)*width+x];
+                colors[y*width+x] = new Color(value, 0f, 0f, 1f);
+            }
+        }
+        sliceTexture.SetPixels(colors);
+        sliceTexture.Apply();
+        return sliceTexture;
     }
 }

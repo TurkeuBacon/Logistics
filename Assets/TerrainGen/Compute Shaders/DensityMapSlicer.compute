@@ -1,0 +1,20 @@
+#pragma kernel getSlice
+
+uint width;
+uint height;
+
+uint slice;
+
+RWTexture2D<float4> sliceTexture;
+
+RWTexture3D<float> densityMap;
+
+[numthreads(32,32,1)]
+void getSlice (uint3 id : SV_DispatchThreadID)
+{
+    if(id.x < width && id.y < height)
+    {
+        float value = densityMap[float3(id.x, slice, id.y)];
+        sliceTexture[id.xy] = float4(0, value, 0, 1);
+    }
+}

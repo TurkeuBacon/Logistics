@@ -702,7 +702,7 @@ PlayerSettings:
       daydreamIconForeground: {fileID: 0}
       daydreamIconBackground: {fileID: 0}
   cloudServicesEnabled:
-    UNet: 1
+    UNet: 0
   luminIcon:
     m_Name: 
     m_ModelFolderPath: 
@@ -715,7 +715,6 @@ PlayerSettings:
     m_VersionCode: 1
     m_VersionName: 
   apiCompatibilityLevel: 6
-  cloudProjectId: c5fcf127-a294-4ff9-9d79-70d8bff32027
   framebufferDepthMemorylessMode: 0
   projectName: 
   organizationId: 

@@ -5,6 +5,7 @@ using System.Threading;
 
 public class ChunkManager : MonoBehaviour
 {
+    public int debugLevel;
     public GameObject target;
     [Range(1, 64)]
     public int renderDistance, editableDistance;
@@ -29,6 +30,7 @@ public class ChunkManager : MonoBehaviour
     void Awake()
     {
         Chunk.terrainGenerator = GetComponent<TerrainGenerator>();
+        Chunk.debugLevel = debugLevel;
     }
 
     void Start()
@@ -144,6 +146,7 @@ public class ChunkManager : MonoBehaviour
 
 public class Chunk
 {
+    public static int debugLevel;
     public static TerrainGenerator terrainGenerator;
     public const int chunkSize = 32;
     private bool valid;
@@ -162,6 +165,7 @@ public class Chunk
         main = mat;
         go = new GameObject();
         go.transform.parent = null;
+        if(debugLevel > 0) go.AddComponent<ChunkDataViewer>();
         go.AddComponent<MeshFilter>();
         go.AddComponent<MeshRenderer>();
         go.GetComponent<MeshRenderer>().sharedMaterial = mat;
@@ -177,8 +181,9 @@ public class Chunk
         numEditables++;
 
         terrainGenerator.GenerateDensityMap(ref densityMapGPU, key);
-        setEditable(false);
-        setEditable(true);
+        if(debugLevel > 0) go.GetComponent<ChunkDataViewer>().chunk = this;
+        // setEditable(false);
+        // setEditable(true);
         Mesh mesh = terrainGenerator.generateMeshGPU(densityMapGPU);
         go.GetComponent<MeshFilter>().sharedMesh = mesh;
         go.transform.position = new Vector3(position.x, 0f, position.y) * chunkSize;
@@ -233,6 +238,20 @@ public class Chunk
             }
             numEditables--;
             editable = false;
+        }
+    }
+
+    public Texture getSlice(int slice)
+    {
+        {
+            if(editable)
+            {
+                return terrainGenerator.getSlice(densityMapGPU, slice);
+            }
+            else
+            {
+                return terrainGenerator.getSlice(densityMapCPU, slice);
+            }
         }
     }
 }
