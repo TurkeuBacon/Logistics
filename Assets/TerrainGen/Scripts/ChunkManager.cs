@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Threading;
 
 public class ChunkManager : MonoBehaviour
 {
@@ -10,22 +9,26 @@ public class ChunkManager : MonoBehaviour
     [Range(1, 64)]
     public int renderDistance, editableDistance;
     public int maxEditableChunks;
-    public int chunkLoadRate, maxQueuedChunks;
-    public int deEditRate;
+    public bool clearingEditables;
+    public int chunkLoadRate, maxQueuedChunks, maxInactiveChunks;
+    private const float
+        chunkLoadCost = 7.5f,
+        chunkDeleteCost = 3.35f,
+        setEditableCost = 0.15f,
+        setNonEditableCost = 1f;
 
     public Material chunkMaterial;
 
     private Vector2 targetPosition;
 
     private Queue<Vector2Int> chunksToBeLoaded;
-    private List<Chunk> seenLastFrame;
 
     private Dictionary<Vector2, Chunk> chunks;
     private Dictionary<Vector2, Chunk> inactiveChunks;
     private Stack<Chunk> deletedChunks;
 
     private List<Chunk> outOfRangeEditables;
-    public bool clearingEditables;
+    private List<Chunk> inRangeStatics;
 
     void Awake()
     {
@@ -36,11 +39,11 @@ public class ChunkManager : MonoBehaviour
     void Start()
     {
         chunksToBeLoaded = new Queue<Vector2Int>();
-        seenLastFrame = new List<Chunk>();
         chunks = new Dictionary<Vector2, Chunk>();
         inactiveChunks = new Dictionary<Vector2, Chunk>();
         deletedChunks = new Stack<Chunk>();
         outOfRangeEditables = new List<Chunk>();
+        inRangeStatics = new List<Chunk>();
         clearingEditables = false;
         for(int i = 0; i < 1000; i++)
         {
@@ -48,8 +51,11 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
+    //Vector2Int currChunkTest = Vector2Int.zero;
     void Update()
     {
+
+    
         targetPosition = new Vector2(target.transform.position.x, target.transform.position.z);
         Vector2Int targetCurrentChunk = Vector2Int.FloorToInt(targetPosition / Chunk.chunkSize);
         for(int j = targetCurrentChunk.y - renderDistance; j <= targetCurrentChunk.y + renderDistance; j++)
@@ -57,38 +63,57 @@ public class ChunkManager : MonoBehaviour
             for(int i = targetCurrentChunk.x - renderDistance; i <= targetCurrentChunk.x + renderDistance; i++)
             {
                 Vector2Int currentKey = new Vector2Int(i, j);
-                if((currentKey-targetCurrentChunk).sqrMagnitude > renderDistance*renderDistance) continue;
+                int sqrMagnitude = (currentKey - targetCurrentChunk).sqrMagnitude;
+                if(sqrMagnitude > renderDistance*renderDistance) continue;
                 if(chunks.ContainsKey(currentKey))
                 {
                     Chunk currentChunk = chunks[currentKey];
-                    if((targetCurrentChunk - currentKey).sqrMagnitude < editableDistance*editableDistance)
+                    // Chunk is in range to be active
+                    currentChunk.setActive(true);
+                    inactiveChunks.Remove(currentKey);
+                    // In Range To Be Editable
+                    if(sqrMagnitude < editableDistance*editableDistance)
                     {
-                        if(!currentChunk.editable)
+                        if(currentChunk.editable)
                         {
-                            currentChunk.setEditable(true);
+                            // Player came back in range of editable chunk,
+                            // The chunk can stay editable
+                            outOfRangeEditables.Remove(currentChunk);
+                        }
+                        else if(!inRangeStatics.Contains(currentChunk))
+                        {
+                            // Player came into range of static chunk
+                            inRangeStatics.Add(currentChunk);
+                        }
+                    }
+                    // Out of Range to be Editable
+                    else
+                    {
+                        if(currentChunk.editable)
+                        {
+                            // Player went out of range of editable chunk
+                            if(!outOfRangeEditables.Contains(currentChunk))
+                            {
+                                outOfRangeEditables.Add(currentChunk);
+                            }
                         }
                         else
                         {
-                            outOfRangeEditables.Remove(currentChunk);
+                            // Player went back out of range of a static chunk
+                            inRangeStatics.Remove(currentChunk);
                         }
-                    }
-                    else if(currentChunk.editable && !outOfRangeEditables.Contains(currentChunk))
-                    {
-                        outOfRangeEditables.Add(currentChunk);
-                    }
-                    currentChunk.setActive(true);
-                    if(inactiveChunks.ContainsKey(currentKey))
-                    {
-                        inactiveChunks.Remove(currentKey);
                     }
                 }
                 else
                 {
+                    // Chunk does not exist yet
+                    // Queued to be loaded
                     if(!chunksToBeLoaded.Contains(currentKey) && chunksToBeLoaded.Count < maxQueuedChunks)
                         chunksToBeLoaded.Enqueue(currentKey);
                 }
             }
         }
+        // Deactivate chunks outside of the render distance
         foreach(Chunk chunk in chunks.Values)
         {
             if(chunk.seenThisFrame)
@@ -104,7 +129,12 @@ public class ChunkManager : MonoBehaviour
                 }
             }
         }
-        if(inactiveChunks.Count > 500)
+
+        if(Chunk.numEditables > maxEditableChunks) clearingEditables = true;
+
+        float availableCost = 16.5f;
+        // Execute Queued Tasks. Kinda Scuffed
+        if(inactiveChunks.Count > maxInactiveChunks && availableCost - chunkLoadRate*chunkLoadCost > 0)
         {
             Debug.Log("Chunk Cleanup");
             foreach(Chunk chunk in inactiveChunks.Values)
@@ -115,14 +145,10 @@ public class ChunkManager : MonoBehaviour
                 deletedChunks.Push(chunk);
             }
             inactiveChunks.Clear();
+            availableCost -= chunkDeleteCost;
         }
-        if(Chunk.numEditables >= maxEditableChunks && !clearingEditables)
-        {
-            Debug.Log("Editables Cleanup");
-            clearingEditables = true;
-            ClearEditables();
-        }
-        for(int i = 0; i < chunkLoadRate && chunksToBeLoaded.Count != 0; i++)
+        // Load in the set ammount of chunks, if there is enough weight
+        for(int i = 0; i < chunkLoadRate && chunksToBeLoaded.Count != 0 && availableCost > 0; i++)
         {
             Vector2Int currentKey = chunksToBeLoaded.Dequeue();
             if(deletedChunks.Count == 0) continue;
@@ -130,7 +156,36 @@ public class ChunkManager : MonoBehaviour
             bool createEditable = (targetCurrentChunk - currentKey).sqrMagnitude < editableDistance*editableDistance && Chunk.numEditables < maxEditableChunks;
             temp.Create(currentKey, createEditable);
             chunks.Add(currentKey, temp);
+            availableCost -= chunkLoadCost;
         }
+        // Set as many chunks editable as possible
+        while(availableCost > 0 && inRangeStatics.Count > 0)
+        {
+            Chunk chunk = inRangeStatics[0];
+            chunk.setEditable(true);
+            inRangeStatics.RemoveAt(0);
+            availableCost -= setEditableCost;
+        }
+        // Set as many chunks non editable as possible
+        if(clearingEditables)
+        {
+            while(availableCost > 0 && outOfRangeEditables.Count > 0)
+            {
+                Chunk chunk = outOfRangeEditables[0];
+                chunk.setEditable(false);
+                outOfRangeEditables.RemoveAt(0);
+                availableCost -= setNonEditableCost;
+            }
+            if(outOfRangeEditables.Count == 0)
+            {
+                clearingEditables = false;
+            }
+        }
+    }
+
+    private void setRenderDistance(int rd)
+    {
+
     }
 
     private void ClearEditables()
@@ -210,6 +265,10 @@ public class Chunk
         if(!valid) return;
         if(active == true) seenThisFrame = true;
         go.SetActive(active);
+    }
+    public bool isActive()
+    {
+        return seenThisFrame;
     }
     public void setEditable(bool isEditable)
     {

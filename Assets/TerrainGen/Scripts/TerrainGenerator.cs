@@ -50,13 +50,18 @@ public class TerrainGenerator : MonoBehaviour
 
         System.Random prng = new System.Random(seed);
 
+        /*
+            Loading a float3 array in the shader with a float array here
+            The SetInts method input is always float4 aligned, so one int of padding is used
+            Max octives is 6, so the array is of size 6*4.
+        */ 
         float[] offsetsArrayF = new float[6*4];
         float maxPossibleHeight = 0;
         float amplitude = 1;
         for (int i = 0; i < octaves; i++)
         {
-            offsetsArrayF[i*4] = coord.x * (chunkResolution - 1);
-            offsetsArrayF[i*4 + 1] = coord.y * (chunkResolution - 1);
+            offsetsArrayF[i*4] = coord.x * (chunkResolution - 1) + prng.Next(-10000, 10000);
+            offsetsArrayF[i*4 + 1] = coord.y * (chunkResolution - 1) + prng.Next(-10000, 10000);
             offsetsArrayF[i*4 + 2] = 0f;
             maxPossibleHeight += amplitude;
             amplitude *= persistance;
@@ -102,6 +107,7 @@ public class TerrainGenerator : MonoBehaviour
         listBuffer.GetData(list);
 
         listBuffer.Release();
+        listBuffer.Dispose();
         return list;
     }
     public void ListToRenderTexture(ref float[] list, ref RenderTexture texture)
@@ -123,6 +129,7 @@ public class TerrainGenerator : MonoBehaviour
 
         listTextureTransfer.Dispatch(kernel, groupsSides, groupsSides, groupsHeight);
         listBuffer.Release();
+        listBuffer.Dispose();
     }
 
     public RenderTexture getSlice(RenderTexture densityMap, int slice)

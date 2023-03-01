@@ -38,12 +38,12 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.18028331, g: 0.2257133, b: 0.3069217, a: 1}
+  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
-  serializedVersion: 11
+  serializedVersion: 12
   m_GIWorkflowMode: 1
   m_GISettings:
     serializedVersion: 2
@@ -98,7 +98,7 @@ LightmapSettings:
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
   m_LightingDataAsset: {fileID: 0}
-  m_UseShadowmask: 1
+  m_LightingSettings: {fileID: 0}
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -118,6 +118,8 @@ NavMeshSettings:
     manualTileSize: 0
     tileSize: 256
     accuratePlacement: 0
+    maxJobWorkers: 0
+    preserveTilesOutsideBounds: 0
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
@@ -151,6 +153,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4f231c4fb786f3946a6b90b886c48677, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_SendPointerHoverToParent: 1
   m_HorizontalAxis: Horizontal
   m_VerticalAxis: Vertical
   m_SubmitButton: Submit
@@ -183,6 +186,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 3
@@ -245,6 +249,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
+  m_PresetInfoIsWorld: 0
 --- !u!223 &1317529528
 Canvas:
   m_ObjectHideFlags: 0
@@ -276,6 +281,7 @@ RectTransform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0, y: 0, z: 0}
+  m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1564498966}
   m_Father: {fileID: 0}
@@ -314,6 +320,7 @@ RectTransform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1317529529}
   m_RootOrder: 0
@@ -338,6 +345,7 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 0.19607843, g: 0.19607843, b: 0.19607843, a: 1}
   m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
@@ -374,6 +382,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1570800043}
   - component: {fileID: 1570800042}
+  - component: {fileID: 1570800044}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -440,6 +449,7 @@ Light:
   m_UseColorTemperature: 0
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
+  m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
 --- !u!4 &1570800043
@@ -452,10 +462,31 @@ Transform:
   m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!114 &1570800044
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1570800041}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 1
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
 --- !u!1 &1822904721 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6962447309736632898, guid: efb935ebf8af0c84f8f2a3ddb1435262,
@@ -507,16 +538,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb3662e7ba81b75429836943be83a406, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  debugLevel: 0
   target: {fileID: 6112778651294641242}
-  renderDistance: 11
+  renderDistance: 15
   editableDistance: 5
-  maxEditableChunks: 100
-  chunkLoadRate: 5
-  maxQueuedChunks: 1000
-  deEditRate: 0
-  chunkMaterial: {fileID: 2100000, guid: 2b30c627bb46aa44c85e8d814b9a9de4, type: 2}
-  test: {fileID: 2100000, guid: 36d5d441c4dc63e48894002fe2967fac, type: 2}
+  maxEditableChunks: 200
   clearingEditables: 0
+  chunkLoadRate: 2
+  maxQueuedChunks: 1000
+  maxInactiveChunks: 500
+  chunkMaterial: {fileID: 2100000, guid: 2b30c627bb46aa44c85e8d814b9a9de4, type: 2}
 --- !u!4 &1924580178
 Transform:
   m_ObjectHideFlags: 0
@@ -527,6 +558,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
@@ -546,14 +578,15 @@ MonoBehaviour:
   noiseCompute3D: {fileID: 7200000, guid: e12893ca75628874d99ba5f1e33163e5, type: 3}
   marchingCubesShader: {fileID: 7200000, guid: f106a47a17b93fd4c9c161abe21767f7, type: 3}
   listTextureTransfer: {fileID: 7200000, guid: e0fd55f04dbaacb41ba4d31a53822a55, type: 3}
+  slicer: {fileID: 7200000, guid: 0baf9124d7254084f9b22ffaa4d503a7, type: 3}
   chunkResolution: 17
   chunkResHeight: 257
-  seed: 84621
+  seed: 65321
   noiseScale: 10
   octaves: 3
-  persistance: 0.742
-  lacunarity: 0.5
-  marchingCubesSurfaceLevel: 0.692
+  persistance: 0.646
+  lacunarity: 1.5
+  marchingCubesSurfaceLevel: 0.585
 --- !u!1001 &6112778651294641241
 PrefabInstance:
   m_ObjectHideFlags: 0

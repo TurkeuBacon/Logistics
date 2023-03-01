@@ -41,15 +41,15 @@ public class ChunkDataViewer : MonoBehaviour
     }
 }
 
-[CustomEditor(typeof(ChunkDataViewer))]
-public class ChunkEditor : Editor
-{
+// [CustomEditor(typeof(ChunkDataViewer))]
+// public class ChunkEditor : Editor
+// {
 
-    public override void OnInspectorGUI()
-    {
-        base.OnInspectorGUI();
-        ChunkDataViewer dataViewer = (ChunkDataViewer)target;
-        GUILayout.Label("", dataViewer.GetLayoutOptions());
-        GUI.DrawTexture(GUILayoutUtility.GetLastRect(), dataViewer.getSlice());
-    }
-}
+//     public override void OnInspectorGUI()
+//     {
+//         base.OnInspectorGUI();
+//         ChunkDataViewer dataViewer = (ChunkDataViewer)target;
+//         GUILayout.Label("", dataViewer.GetLayoutOptions());
+//         GUI.DrawTexture(GUILayoutUtility.GetLastRect(), dataViewer.getSlice());
+//     }
+// }
