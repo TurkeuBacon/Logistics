@@ -540,7 +540,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   debugLevel: 0
   target: {fileID: 6112778651294641242}
-  renderDistance: 15
+  renderDistance: 34
   editableDistance: 5
   maxEditableChunks: 200
   clearingEditables: 0
@@ -581,12 +581,18 @@ MonoBehaviour:
   slicer: {fileID: 7200000, guid: 0baf9124d7254084f9b22ffaa4d503a7, type: 3}
   chunkResolution: 17
   chunkResHeight: 257
-  seed: 65321
-  noiseScale: 10
+  seed: 98492
+  noiseScale: 4.67
   octaves: 3
   persistance: 0.646
   lacunarity: 1.5
+  continentalnessScale: 0.82
+  erosionScale: 1.6
   marchingCubesSurfaceLevel: 0.585
+  maxSquashHeight: 200
+  minSquashHeight: 64
+  maxSquashScale: 10.8
+  minSquashScale: 5.1
 --- !u!1001 &6112778651294641241
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -12,15 +12,20 @@ public class TerrainGenerator : MonoBehaviour
 
     public int seed;
 
-    public int noiseScale;
+    public float noiseScale;
     [Range(1, 6)]
     public int octaves;
     [Range(0, 1)]
     public float persistance;
     public float lacunarity;
 
+    public float continentalnessScale, erosionScale;
+
     [Range(0, 1)]
     public float marchingCubesSurfaceLevel;
+
+    public int maxSquashHeight, minSquashHeight;
+    public float maxSquashScale, minSquashScale;
 
     public Mesh generateMeshGPU(RenderTexture texture)
     {
@@ -54,8 +59,9 @@ public class TerrainGenerator : MonoBehaviour
             Loading a float3 array in the shader with a float array here
             The SetInts method input is always float4 aligned, so one int of padding is used
             Max octives is 6, so the array is of size 6*4.
-        */ 
-        float[] offsetsArrayF = new float[6*4];
+        */
+        int maxOctaves = 6;
+        float[] offsetsArrayF = new float[(maxOctaves+2)*4];
         float maxPossibleHeight = 0;
         float amplitude = 1;
         for (int i = 0; i < octaves; i++)
@@ -66,11 +72,21 @@ public class TerrainGenerator : MonoBehaviour
             maxPossibleHeight += amplitude;
             amplitude *= persistance;
         }
+        // Continentalness and Erosion
+        for (int i = 0; i < 2; i++)
+        {
+            offsetsArrayF[(maxOctaves+i)*4] = coord.x * (chunkResolution - 1) + prng.Next(-10000, 10000);
+            offsetsArrayF[(maxOctaves+i)*4 + 1] = coord.y * (chunkResolution - 1) + prng.Next(-10000, 10000);
+            offsetsArrayF[(maxOctaves+i)*4 + 2] = 0f;
+        }
         
         noiseCompute3D.SetInt("octaves", octaves);
         noiseCompute3D.SetFloat("persistance", persistance);
         noiseCompute3D.SetFloat("lacunarity", lacunarity);
         noiseCompute3D.SetFloat("noiseScale", noiseScale / 500f);
+        
+        noiseCompute3D.SetFloat("continentalnessScale", continentalnessScale / 1000f);
+        noiseCompute3D.SetFloat("erosionScale", erosionScale / 1000f);
 
         int kernel = noiseCompute3D.FindKernel("GenerateNoise");
 
@@ -78,6 +94,10 @@ public class TerrainGenerator : MonoBehaviour
         noiseCompute3D.SetFloat("maxPossibleValue", maxPossibleHeight);
 
         noiseCompute3D.SetFloat("surfaceLevel", marchingCubesSurfaceLevel);
+        noiseCompute3D.SetInt("maxSquashHeight", maxSquashHeight);
+        noiseCompute3D.SetInt("minSquashHeight", minSquashHeight);
+        noiseCompute3D.SetFloat("maxSquashScale", maxSquashScale);
+        noiseCompute3D.SetFloat("minSquashScale", minSquashScale);
 
         noiseCompute3D.SetInt("noiseSides", chunkResolution + 2);
         noiseCompute3D.SetInt("noiseHeight", chunkResHeight);
@@ -170,5 +190,11 @@ public class TerrainGenerator : MonoBehaviour
         sliceTexture.SetPixels(colors);
         sliceTexture.Apply();
         return sliceTexture;
+    }
+
+    private void OnValidate() {
+        if(maxSquashHeight < 0) maxSquashHeight = 0;
+        if(maxSquashHeight > chunkResHeight) maxSquashHeight = chunkResHeight;
+        if(minSquashScale <= 0) minSquashScale = 0.001f;
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -45,7 +45,7 @@ public class ChunkManager : MonoBehaviour
         outOfRangeEditables = new List<Chunk>();
         inRangeStatics = new List<Chunk>();
         clearingEditables = false;
-        for(int i = 0; i < 1000; i++)
+        for(int i = 0; i < 20000; i++)
         {
             deletedChunks.Push(new Chunk(this.transform, chunkMaterial));
         }
@@ -109,7 +109,9 @@ public class ChunkManager : MonoBehaviour
                     // Chunk does not exist yet
                     // Queued to be loaded
                     if(!chunksToBeLoaded.Contains(currentKey) && chunksToBeLoaded.Count < maxQueuedChunks)
+                    {
                         chunksToBeLoaded.Enqueue(currentKey);
+                    }
                 }
             }
         }
@@ -203,7 +205,7 @@ public class Chunk
 {
     public static int debugLevel;
     public static TerrainGenerator terrainGenerator;
-    public const int chunkSize = 32;
+    public const int chunkSize = 16;
     private bool valid;
     private GameObject go;
     private RenderTexture densityMapGPU;
