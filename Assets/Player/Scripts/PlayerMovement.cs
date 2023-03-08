@@ -8,7 +8,10 @@ public class PlayerMovement : MonoBehaviour
         backwardAcceleration, backwardDeceleration, backwardSpeed,
         sidewaysAcceleration, sidewaysDeceleration, sidewaysSpeed,
         horizontalRotationSpeed;
-        
+    
+    public float jumpHeight;
+
+    public float playerGravity;
     [Range(0, 0.5f)]
     public float groundCheckDistance;
     [Range(0, 1.5708f)]
@@ -17,13 +20,15 @@ public class PlayerMovement : MonoBehaviour
     public LayerMask gcLayerMask;
 
     private Vector3 inputs;
+    private bool jumpInput;
+    private int gcJumpFrameDelay = 0;
 
-    private float forwardVelocity;
-    private float sidewaysVelocity;
+    private float forwardVelocity, sidewaysVelocity, verticalVelocity;
     private Vector3 localVelocity;
 
     private float groundCheckSideHeight, groundCheckSideWidth;
     private Vector3[] gcOrigins, gcDirections;
+    private float jumpVelocity;
 
     private Rigidbody rb;
     private Transform cameraTransform;
@@ -37,6 +42,7 @@ public class PlayerMovement : MonoBehaviour
     void Start()
     {
         forwardVelocity = sidewaysVelocity = 0;
+        jumpVelocity = Mathf.Sqrt(2*playerGravity*jumpHeight);
         setGCSideValues(groundCheckSideAngle);
         grounded = false;
     }
@@ -54,6 +60,13 @@ public class PlayerMovement : MonoBehaviour
         inputs = new Vector3(horizontal, 0f, vertical);
         #endregion
 
+        #region Jump Input
+        if(Input.GetButtonDown("Jump"))
+        {
+            jumpInput = true;
+        }
+        #endregion
+
         #region Rotation
         float horizontalMouse = Input.GetAxis("Mouse X");
         float horizontalRotation = horizontalMouse * horizontalRotationSpeed * Time.deltaTime;
@@ -64,7 +77,28 @@ public class PlayerMovement : MonoBehaviour
     void FixedUpdate()
     {
         #region Grounding Check / Ground Snap
-        checkIsGrounded();
+        if(gcJumpFrameDelay > 0)
+        {
+            gcJumpFrameDelay--;
+        }
+        else
+        {
+            checkIsGrounded();
+        }
+        if(!grounded)
+        {
+            verticalVelocity -= playerGravity * Time.deltaTime;
+        }
+        else
+        {
+            verticalVelocity = 0f;
+            if(jumpInput)
+            {
+                verticalVelocity = jumpVelocity;
+                grounded = false;
+                gcJumpFrameDelay = 2;
+            }
+        }
         #endregion
 
         #region Forward Movement Calculations
@@ -108,7 +142,8 @@ public class PlayerMovement : MonoBehaviour
         //Debug.Log("local velocity" + localVelocity);
         localVelocity = new Vector3(sidewaysVelocity, 0f, forwardVelocity);
 
-        rb.velocity = transform.rotation * localVelocity;
+        rb.velocity = transform.rotation * localVelocity + Vector3.up * verticalVelocity;
+        jumpInput = false;
     }
 
     private void checkIsGrounded()

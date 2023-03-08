@@ -185,11 +185,6 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
-    private void setRenderDistance(int rd)
-    {
-
-    }
-
     private void ClearEditables()
     {
         foreach(Chunk c in outOfRangeEditables)
@@ -226,6 +221,7 @@ public class Chunk
         go.AddComponent<MeshFilter>();
         go.AddComponent<MeshRenderer>();
         go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+        go.AddComponent<MeshCollider>();
         Destroy();
     }
 
@@ -241,6 +237,7 @@ public class Chunk
         if(debugLevel > 0) go.GetComponent<ChunkDataViewer>().chunk = this;
         Mesh mesh = terrainGenerator.generateMeshGPU(densityMapGPU);
         go.GetComponent<MeshFilter>().sharedMesh = mesh;
+        go.GetComponent<MeshCollider>().sharedMesh = mesh;
         go.transform.position = new Vector3(position.x, 0f, position.y) * chunkSize;
         go.name = position.ToString();
         setEditable(isEditable);
