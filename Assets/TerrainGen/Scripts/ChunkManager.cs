@@ -5,7 +5,7 @@ using UnityEngine;
 public class ChunkManager : MonoBehaviour
 {
     public int debugLevel;
-    public GameObject target;
+    public GameObject target, pleaseHold;
     [Range(1, 64)]
     public int renderDistance, editableDistance;
     public int maxEditableChunks;
@@ -49,15 +49,20 @@ public class ChunkManager : MonoBehaviour
         {
             deletedChunks.Push(new Chunk(this.transform, chunkMaterial));
         }
+        //target.SetActive(false);
+        //pleaseHold.SetActive(true);
     }
 
     //Vector2Int currChunkTest = Vector2Int.zero;
     void Update()
     {
-
-    
         targetPosition = new Vector2(target.transform.position.x, target.transform.position.z);
         Vector2Int targetCurrentChunk = Vector2Int.FloorToInt(targetPosition / Chunk.chunkSize);
+        if(target.activeSelf && !chunks.ContainsKey(targetCurrentChunk))
+        {
+            target.SetActive(false);
+            pleaseHold.SetActive(true);
+        }
         for(int j = targetCurrentChunk.y - renderDistance; j <= targetCurrentChunk.y + renderDistance; j++)
         {
             for(int i = targetCurrentChunk.x - renderDistance; i <= targetCurrentChunk.x + renderDistance; i++)
@@ -158,6 +163,18 @@ public class ChunkManager : MonoBehaviour
             bool createEditable = (targetCurrentChunk - currentKey).sqrMagnitude < editableDistance*editableDistance && Chunk.numEditables < maxEditableChunks;
             temp.Create(currentKey, createEditable);
             chunks.Add(currentKey, temp);
+            if(currentKey == targetCurrentChunk)
+            {
+                RaycastHit spawnHeightHit;
+                float chunkScale = Chunk.chunkSize / (FindObjectOfType<TerrainGenerator>().chunkResolution - 1);
+                float trueChunkHeight = FindObjectOfType<TerrainGenerator>().chunkResHeight * chunkScale;
+                if(Physics.Raycast(Vector3.up * trueChunkHeight, Vector3.down, out spawnHeightHit, trueChunkHeight))
+                {
+                    target.transform.position = spawnHeightHit.point + Vector3.up * 1f;
+                }
+                target.SetActive(true);
+                pleaseHold.SetActive(false);
+            }
             availableCost -= chunkLoadCost;
         }
         // Set as many chunks editable as possible

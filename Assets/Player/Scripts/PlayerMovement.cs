@@ -25,6 +25,7 @@ public class PlayerMovement : MonoBehaviour
 
     private float forwardVelocity, sidewaysVelocity, verticalVelocity;
     private Vector3 localVelocity;
+    private float lastYPosition;
 
     private float groundCheckSideHeight, groundCheckSideWidth;
     private Vector3[] gcOrigins, gcDirections;
@@ -42,6 +43,7 @@ public class PlayerMovement : MonoBehaviour
     void Start()
     {
         forwardVelocity = sidewaysVelocity = 0;
+        lastYPosition = transform.position.y;
         jumpVelocity = Mathf.Sqrt(2*playerGravity*jumpHeight);
         setGCSideValues(groundCheckSideAngle);
         grounded = false;
@@ -61,7 +63,7 @@ public class PlayerMovement : MonoBehaviour
         #endregion
 
         #region Jump Input
-        if(Input.GetButtonDown("Jump"))
+        if(Input.GetButton("Jump"))
         {
             jumpInput = true;
         }
@@ -77,6 +79,7 @@ public class PlayerMovement : MonoBehaviour
     void FixedUpdate()
     {
         #region Grounding Check / Ground Snap
+        bool wasGrounded = grounded;
         if(gcJumpFrameDelay > 0)
         {
             gcJumpFrameDelay--;
@@ -87,7 +90,23 @@ public class PlayerMovement : MonoBehaviour
         }
         if(!grounded)
         {
-            verticalVelocity -= playerGravity * Time.deltaTime;
+            if(wasGrounded && downhillCheck(groundCheckDistance*3f))
+            {
+                Debug.Log("Downhill");
+                verticalVelocity = -5f;
+                grounded = true;
+            }
+            else
+            {
+                if(verticalVelocity >= 0 || (transform.position.y - lastYPosition) / (verticalVelocity*Time.deltaTime) >= 0.5f)
+                {
+                    verticalVelocity -= playerGravity * Time.deltaTime;
+                }
+                else
+                {
+                    Debug.Log("Did not move 50% of expected difference. Freezing Gravity");
+                }
+            }
         }
         else
         {
@@ -143,6 +162,7 @@ public class PlayerMovement : MonoBehaviour
         localVelocity = new Vector3(sidewaysVelocity, 0f, forwardVelocity);
 
         rb.velocity = transform.rotation * localVelocity + Vector3.up * verticalVelocity;
+        lastYPosition = transform.position.y;
         jumpInput = false;
     }
 
@@ -153,14 +173,19 @@ public class PlayerMovement : MonoBehaviour
             RaycastHit groundHit;
             Vector3 origin = transform.position + transform.rotation * gcOrigins[i];
             Vector3 direction = transform.rotation * gcDirections[i];
-            if(Physics.Raycast(origin, direction, out groundHit, groundCheckDistance, gcLayerMask))
+            if(Physics.Raycast(origin - direction*0.1f, direction, out groundHit, groundCheckDistance + 0.1f, gcLayerMask))
             {
                 grounded = true;
-                Debug.Log(groundHit.collider.gameObject.name);
                 return;
             }
         }
         grounded = false;
+    }
+    private bool downhillCheck(float dist)
+    {
+        Vector3 origin = transform.position + transform.rotation * gcOrigins[0];
+        Vector3 direction = transform.rotation * gcDirections[0];
+        return Physics.Raycast(origin - direction*0.1f, direction, dist + 0.1f, gcLayerMask);
     }
 
     private void setGCSideValues(float angle)
