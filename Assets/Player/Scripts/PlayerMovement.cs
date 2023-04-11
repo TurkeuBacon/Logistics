@@ -47,6 +47,7 @@ public class PlayerMovement : MonoBehaviour
         jumpVelocity = Mathf.Sqrt(2*playerGravity*jumpHeight);
         setGCSideValues(groundCheckSideAngle);
         grounded = false;
+        FindObjectOfType<PauseMenuController>().playerSettingsApply += applySettings;
     }
 
 
@@ -92,7 +93,6 @@ public class PlayerMovement : MonoBehaviour
         {
             if(wasGrounded && downhillCheck(groundCheckDistance*3f))
             {
-                Debug.Log("Downhill");
                 verticalVelocity = -5f;
                 grounded = true;
             }
@@ -101,10 +101,6 @@ public class PlayerMovement : MonoBehaviour
                 if(verticalVelocity >= 0 || (transform.position.y - lastYPosition) / (verticalVelocity*Time.deltaTime) >= 0.5f)
                 {
                     verticalVelocity -= playerGravity * Time.deltaTime;
-                }
-                else
-                {
-                    Debug.Log("Did not move 50% of expected difference. Freezing Gravity");
                 }
             }
         }
@@ -216,5 +212,11 @@ public class PlayerMovement : MonoBehaviour
             Vector3 gcStart = transform.position + transform.rotation * gcOrigins[i];
             Debug.DrawRay(gcStart, transform.rotation * gcDirections[i] * groundCheckDistance, Color.red);
         }
+    }
+
+    private void applySettings(params int[] settings)
+    {
+        horizontalRotationSpeed = settings[0];
+        GetComponentInChildren<CameraControl>().verticalRotationSpeed = settings[0];
     }
 }

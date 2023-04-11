@@ -8,9 +8,11 @@ public class ChunkManager : MonoBehaviour
     public GameObject target, pleaseHold;
     [Range(1, 64)]
     public int renderDistance, editableDistance;
+    private int lastRenderDistance; //!!!!!!!!!!!!DELETE THIS WHEN DONE TESTING!!!!!!!!!!!!
+    private int sqrRenderDistance;
     public int maxEditableChunks;
     public bool clearingEditables;
-    public int chunkLoadRate, maxQueuedChunks, maxInactiveChunks;
+    public int chunkLoadRate, maxQueuedChunks, maxInactiveChunks, chunkQueueCleanupFrequency;
     private const float
         chunkLoadCost = 7.5f,
         chunkDeleteCost = 3.35f,
@@ -20,8 +22,11 @@ public class ChunkManager : MonoBehaviour
     public Material chunkMaterial;
 
     private Vector2 targetPosition;
+    public int minChunksForSpawn;
+    private bool spawningTarget;
 
-    private Queue<Vector2Int> chunksToBeLoaded;
+    private ChunkLoadQueue chunksToBeLoaded;
+    private int chunkQueueCleanupTimer;
 
     private Dictionary<Vector2, Chunk> chunks;
     private Dictionary<Vector2, Chunk> inactiveChunks;
@@ -38,17 +43,20 @@ public class ChunkManager : MonoBehaviour
 
     void Start()
     {
-        chunksToBeLoaded = new Queue<Vector2Int>();
+        setRenderDistance(renderDistance);
+        spawningTarget = false;
         chunks = new Dictionary<Vector2, Chunk>();
         inactiveChunks = new Dictionary<Vector2, Chunk>();
         deletedChunks = new Stack<Chunk>();
         outOfRangeEditables = new List<Chunk>();
         inRangeStatics = new List<Chunk>();
         clearingEditables = false;
+        chunkQueueCleanupTimer = 0;
         for(int i = 0; i < 20000; i++)
         {
             deletedChunks.Push(new Chunk(this.transform, chunkMaterial));
         }
+        FindObjectOfType<PauseMenuController>().gameplaySettingsApply += applySettings;
         //target.SetActive(false);
         //pleaseHold.SetActive(true);
     }
@@ -56,8 +64,17 @@ public class ChunkManager : MonoBehaviour
     //Vector2Int currChunkTest = Vector2Int.zero;
     void Update()
     {
+        if(spawningTarget && (chunks.Count-inactiveChunks.Count) > minChunksForSpawn)
+        {
+            spawnTarget();
+        }
+        if(lastRenderDistance != renderDistance)
+        {
+            setRenderDistance(renderDistance);
+        }
         targetPosition = new Vector2(target.transform.position.x, target.transform.position.z);
         Vector2Int targetCurrentChunk = Vector2Int.FloorToInt(targetPosition / Chunk.chunkSize);
+        //Debug.Log("Target Chunk" + targetCurrentChunk + "-------------------");
         if(target.activeSelf && !chunks.ContainsKey(targetCurrentChunk))
         {
             target.SetActive(false);
@@ -69,7 +86,7 @@ public class ChunkManager : MonoBehaviour
             {
                 Vector2Int currentKey = new Vector2Int(i, j);
                 int sqrMagnitude = (currentKey - targetCurrentChunk).sqrMagnitude;
-                if(sqrMagnitude > renderDistance*renderDistance) continue;
+                if(sqrMagnitude > sqrRenderDistance) continue;
                 if(chunks.ContainsKey(currentKey))
                 {
                     Chunk currentChunk = chunks[currentKey];
@@ -113,9 +130,9 @@ public class ChunkManager : MonoBehaviour
                 {
                     // Chunk does not exist yet
                     // Queued to be loaded
-                    if(!chunksToBeLoaded.Contains(currentKey) && chunksToBeLoaded.Count < maxQueuedChunks)
+                    if(!chunksToBeLoaded.Contains(currentKey) /*&& chunksToBeLoaded.size < maxQueuedChunks*/)
                     {
-                        chunksToBeLoaded.Enqueue(currentKey);
+                        bool success = chunksToBeLoaded.Enqueue(currentKey, (int)(targetCurrentChunk-currentKey).magnitude);
                     }
                 }
             }
@@ -158,6 +175,23 @@ public class ChunkManager : MonoBehaviour
         for(int i = 0; i < chunkLoadRate && chunksToBeLoaded.Count != 0 && availableCost > 0; i++)
         {
             Vector2Int currentKey = chunksToBeLoaded.Dequeue();
+            if(chunkQueueCleanupTimer >= chunkQueueCleanupFrequency)
+            {
+                if(chunksToBeLoaded.rangeCheck(targetCurrentChunk))
+                {
+                    Debug.Log("Chunk Queue Cleanup");
+                }
+                chunkQueueCleanupTimer = 0;
+            }
+            else
+            {
+                chunkQueueCleanupTimer++;
+            }
+            if(Mathf.Abs((currentKey-targetCurrentChunk).x) > renderDistance || Mathf.Abs((currentKey-targetCurrentChunk).y) > renderDistance || chunks.ContainsKey(currentKey))
+            {
+                i--;
+                continue;
+            }
             if(deletedChunks.Count == 0) continue;
             Chunk temp = deletedChunks.Pop();
             bool createEditable = (targetCurrentChunk - currentKey).sqrMagnitude < editableDistance*editableDistance && Chunk.numEditables < maxEditableChunks;
@@ -165,15 +199,7 @@ public class ChunkManager : MonoBehaviour
             chunks.Add(currentKey, temp);
             if(currentKey == targetCurrentChunk)
             {
-                RaycastHit spawnHeightHit;
-                float chunkScale = Chunk.chunkSize / (FindObjectOfType<TerrainGenerator>().chunkResolution - 1);
-                float trueChunkHeight = FindObjectOfType<TerrainGenerator>().chunkResHeight * chunkScale;
-                if(Physics.Raycast(Vector3.up * trueChunkHeight, Vector3.down, out spawnHeightHit, trueChunkHeight))
-                {
-                    target.transform.position = spawnHeightHit.point + Vector3.up * 1f;
-                }
-                target.SetActive(true);
-                pleaseHold.SetActive(false);
+                spawningTarget = true;
             }
             availableCost -= chunkLoadCost;
         }
@@ -202,14 +228,32 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
-    private void ClearEditables()
+    public void spawnTarget()
     {
-        foreach(Chunk c in outOfRangeEditables)
+        RaycastHit spawnHeightHit;
+        float chunkScale = Chunk.chunkSize / (FindObjectOfType<TerrainGenerator>().chunkResolution - 1);
+        float trueChunkHeight = FindObjectOfType<TerrainGenerator>().chunkResHeight * chunkScale;
+        Vector3 castPos = new Vector3(target.transform.position.x, 0f, target.transform.position.z) + Vector3.up * trueChunkHeight;
+        if(Physics.Raycast(castPos, Vector3.down, out spawnHeightHit, trueChunkHeight))
         {
-            c.setEditable(false);
+            target.transform.position = spawnHeightHit.point + Vector3.up * 1f;
+            target.SetActive(true);
+            pleaseHold.SetActive(false);
+            spawningTarget = false;
         }
-        outOfRangeEditables.Clear();
-        clearingEditables = false;
+    }
+
+    public void setRenderDistance(int rd)
+    {
+        renderDistance = rd;
+        lastRenderDistance = renderDistance;
+        sqrRenderDistance = renderDistance*renderDistance;
+        chunksToBeLoaded = new ChunkLoadQueue(rd);
+    }
+
+    private void applySettings(params int[] settings)
+    {
+        setRenderDistance(settings[0]);
     }
 }
 
