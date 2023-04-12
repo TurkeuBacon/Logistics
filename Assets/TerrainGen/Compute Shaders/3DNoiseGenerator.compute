@@ -14,6 +14,9 @@ float noiseScale;
 float continentalnessScale;
 float erosionScale;
 
+int numSplinePoints;
+float2 splinePoints[16];
+
 float3 offsets[8];
 float maxPossibleValue;
 
@@ -49,7 +52,21 @@ void GenerateNoise(uint3 id : SV_DispatchThreadID)
 			frequency *= lacunarity;
 		}
 		value = (value + 1) / (2 * maxPossibleValue / 1.75);
-		continentalness =  (continentalness + 1) / (2 * maxPossibleValue / 1.75);
+		continentalness = (continentalness + 1) / (2 * maxPossibleValue / 1.75);
+		if(continentalness > 0 && continentalness < 1)
+		{
+			for(int i = 1; i < numSplinePoints; i++)
+			{
+				if(continentalness <= splinePoints[i].x)
+				{
+					float2 point1 = splinePoints[i-1];
+					float2 point2 = splinePoints[i];
+					continentalness = (point2.y-point1.y)/(point2.x-point1.x)*(continentalness-point1.x)+point1.y;
+					break;
+				}
+			}
+		}
+
 		erosion =  (erosion + 1) / (2 * maxPossibleValue / 1.75);
 		float squashHeight = minSquashHeight + continentalness * (maxSquashHeight - minSquashHeight);
 		float squashScale = maxSquashScale + erosion * (maxSquashScale - minSquashScale);

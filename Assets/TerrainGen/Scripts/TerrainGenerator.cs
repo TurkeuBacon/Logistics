@@ -27,6 +27,9 @@ public class TerrainGenerator : MonoBehaviour
     public int maxSquashHeight, minSquashHeight;
     public float maxSquashScale, minSquashScale;
 
+    public AnimationCurve splinePointsCurve;
+    private float[] splinePoints;
+
     public Mesh generateMeshGPU(RenderTexture texture)
     {
         return MeshGenerator.getInstance().GenerateMeshGPU(texture, marchingCubesSurfaceLevel, ((float)Chunk.chunkSize / (chunkResolution - 1)), marchingCubesShader, 0).CreateMesh();
@@ -79,6 +82,8 @@ public class TerrainGenerator : MonoBehaviour
             offsetsArrayF[(maxOctaves+i)*4 + 1] = coord.y * (chunkResolution - 1) + prng.Next(-10000, 10000);
             offsetsArrayF[(maxOctaves+i)*4 + 2] = 0f;
         }
+        //Spline Points
+        if(splinePoints == null) { splinePoints = getSplinePoints(splinePointsCurve); }
         
         noiseCompute3D.SetInt("octaves", octaves);
         noiseCompute3D.SetFloat("persistance", persistance);
@@ -87,6 +92,9 @@ public class TerrainGenerator : MonoBehaviour
         
         noiseCompute3D.SetFloat("continentalnessScale", continentalnessScale / 1000f);
         noiseCompute3D.SetFloat("erosionScale", erosionScale / 1000f);
+        
+        noiseCompute3D.SetInt("numSplinePoints", splinePointsCurve.keys.Length);
+        noiseCompute3D.SetFloats("splinePoints", splinePoints);
 
         int kernel = noiseCompute3D.FindKernel("GenerateNoise");
 
@@ -190,6 +198,20 @@ public class TerrainGenerator : MonoBehaviour
         sliceTexture.SetPixels(colors);
         sliceTexture.Apply();
         return sliceTexture;
+    }
+
+    private float[] getSplinePoints(AnimationCurve curve)
+    {
+        Keyframe[] keys = curve.keys;
+        float[] points = new float[16*4];
+        points[0] = points[1] = 0f;
+        points[keys.Length*4-4] = points[keys.Length*4-3] = 1f;
+        for(int i = 1; i < keys.Length-1; i++)
+        {
+            points[i*4] = keys[i].time;
+            points[i*4+1] = keys[i].value;
+        }
+        return points;
     }
 
     private void OnValidate() {

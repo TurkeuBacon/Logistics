@@ -38,6 +38,7 @@ public class PauseMenuController : MonoBehaviour
         renderDistanceSetting = 30;
         cameraSensitivitySetting = 65;
         revertSettingsMenu();
+        Apply();
     }
 
     // Update is called once per frame
